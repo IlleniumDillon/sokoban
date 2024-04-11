@@ -1,0 +1,16 @@
+# Ignore compiled binaries
+*.exe
+*.dll
+*.so
+
+# Ignore log files
+*.log
+
+# Ignore package files
+*.tar.gz
+*.zip
+
+# Ignore build output directories
+build
+dist
+out
