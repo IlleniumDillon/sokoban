@@ -108,6 +108,8 @@ public:
             map_push.at<uchar>(robot.taskList.front().position.x(), robot.taskList.front().position.y()) = 0;
             robot.update(map_move, map_push, boxes);
         }
+
+        //todo: box position update
     }
 
 private:
