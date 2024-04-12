@@ -74,8 +74,28 @@ int main()
     {
         world.update();
         world.draw();
-        if(waitKey(100) == 27)
+
+        char input = cv::waitKey(0);
+        if(input == 27)
             break;
+        else if(input == ' ')
+            continue;
+        else if(input == 'w')
+            world.robots[0].move(Vector2i(0, -1));
+        else if(input == 's')
+            world.robots[0].move(Vector2i(0, 1));
+        else if(input == 'a')
+            world.robots[0].move(Vector2i(-1, 0));
+        else if(input == 'd')
+            world.robots[0].move(Vector2i(1, 0));
+        else if(input == 'p')
+            world.robots[0].setAction(Robot::PUSH);
+        else if(input == 'l')
+            world.robots[0].setAction(Robot::PULL);
+        else if(input == 'n')
+            world.robots[0].setAction(Robot::NOACTION);
+        else
+            continue;
     }
 
     return 0;

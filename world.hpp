@@ -48,31 +48,36 @@ public:
             map_show.at<Vec3b>(robot.position.y(), robot.position.x()) = Vec3b(0, 0, 255);
         }
 
-        resize(map_show, map_show, Size(800, 600), 0, 0, INTER_NEAREST);
+        resize(map_show, map_show, Size(show_width, show_height), 0, 0, INTER_NEAREST);
 
         for (auto& robot : robots)
         {
-            int text_x = robot.position.x() * 800 / width;
-            int text_y = robot.position.y() * 600 / height + 10;
+            int text_x = robot.position.x() * show_width / width;
+            int text_y = robot.position.y() * show_height / height + 10;
             putText(map_show, robot.name, Point(text_x, text_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
+
+            int mode_x = robot.position.x() * show_width / width;
+            int mode_y = robot.position.y() * show_height / height + 20;
+            string mode_str = robot.action == Robot::Action::PUSH ? "push" : robot.action == Robot::Action::PULL ? "pull" : "noaction";
+            putText(map_show, mode_str, Point(mode_x, mode_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
 
             for (auto &task : robot.taskList)
             {
-                int task_x = task.position.x() * 800 / width;
-                int task_y = task.position.y() * 600 / height + 10;
+                int task_x = task.position.x() * show_width / width;
+                int task_y = task.position.y() * show_height / height + 10;
                 putText(map_show, task.name, Point(task_x, task_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
 
-                int task_lu_x = task.position.x() * 800 / width;
-                int task_lu_y = task.position.y() * 600 / height;
-                int task_rd_x = (task.position.x() + 1) * 800 / width;
-                int task_rd_y = (task.position.y() + 1) * 600 / height;
+                int task_lu_x = task.position.x() * show_width / width;
+                int task_lu_y = task.position.y() * show_height / height;
+                int task_rd_x = (task.position.x() + 1) * show_width / width;
+                int task_rd_y = (task.position.y() + 1) * show_height / height;
                 rectangle(map_show, Point(task_lu_x, task_lu_y), Point(task_rd_x, task_rd_y), Scalar(0, 255, 255), 5);
             }
 
             for(auto& path : robot.path)
             {
-                int path_x = (path.x() + 0.5) * 800 / width;
-                int path_y = (path.y() + 0.5) * 600 / height;
+                int path_x = (path.x() + 0.5) * show_width / width;
+                int path_y = (path.y() + 0.5) * show_height / height;
                 circle(map_show, Point(path_x, path_y), 5, Scalar(0, 0, 255), -1);
             }
         }
@@ -81,8 +86,8 @@ public:
         {
             if(box.static_)
                 continue;
-            int text_x = box.position.x() * 800 / width;
-            int text_y = box.position.y() * 600 / height + 10;
+            int text_x = box.position.x() * show_width / width;
+            int text_y = box.position.y() * show_height / height + 10;
             putText(map_show, box.name, Point(text_x, text_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
         }
 
@@ -91,29 +96,58 @@ public:
 
     void update()
     {
-        for(auto& box : boxes)
-        {
-            map_move.at<uchar>(box.position.y(), box.position.x()) = 1;
-            map_push.at<uchar>(box.position.y(), box.position.x()) = 1;
-        }
-        for(auto& robot : robots)
-        {
-            map_move.at<uchar>(robot.position.y(), robot.position.x()) = 1;
-            map_push.at<uchar>(robot.position.y(), robot.position.x()) = 1;
-        }
-        for(auto& robot : robots)
-        {
-            map_move.at<uchar>(robot.position.y(), robot.position.x()) = 0;
-            map_push.at<uchar>(robot.position.y(), robot.position.x()) = 0;
-            map_push.at<uchar>(robot.taskList.front().position.x(), robot.taskList.front().position.y()) = 0;
-            robot.update(map_move, map_push, boxes);
-        }
-
         //todo: box position update
+        for(auto& robot : robots)
+        {
+            if(robot.position.x() < 0 || robot.position.x() >= width || robot.position.y() < 0 || robot.position.y() >= height)
+            {
+                cout << "Robot " << robot.name << " out of map!" << endl;
+                robot.position -= robot.lastMove;
+                break;
+            }
+            auto box = find_if(boxes.begin(), boxes.end(), [&](Box box){return box.position == robot.position;});
+            if(box != boxes.end())
+            {
+                if(box->static_)
+                {
+                    cout << "Robot " << robot.name << " hit a static box!" << endl;
+                    robot.position -= robot.lastMove;
+                    break;
+                }
+                else
+                {
+                    if(robot.action == Robot::Action::NOACTION)
+                    {
+                        cout << "Robot " << robot.name << " hit a box without action!" << endl;
+                        robot.position -= robot.lastMove;
+                        break;
+                    }
+                }
+            }
+            
+            // if(robot.action == Robot::Action::PUSH)
+            // {
+            //     if(box != boxes.end())
+            //     {
+            //         auto boxPos = box->position + robot.lastMove;
+            //         if(boxPos.x() < 0 || boxPos.x() >= width || boxPos.y() < 0 || boxPos.y() >= height)
+            //         {
+            //             cout << "Robot " << robot.name << " push a box out of map!" << endl;
+            //             robot.position -= robot.lastMove;
+            //             break;
+            //         }
+            //     }
+            // }
+            // else if(robot.action == Robot::Action::PULL)
+            // {
+                
+            // }
+        }
     }
 
-private:
+
     int width, height;
+    int show_width = 800, show_height = 600;
     Mat map_blank;
     Mat map_move;
     Mat map_push;
