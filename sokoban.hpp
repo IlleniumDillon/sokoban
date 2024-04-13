@@ -5,9 +5,9 @@
 #include <eigen3/Eigen/Eigen>
 #include <opencv2/opencv.hpp>
 
-#include "box.hpp"
 #include "AStar.hpp"
 #include "task.hpp"
+#include "world.hpp"
 
 using namespace Eigen;
 using namespace cv;
@@ -16,6 +16,11 @@ using namespace std;
 class Sokoban
 {
 public:
+    Sokoban() {}
+    void setWorld(World* world_)
+    {
+        world = world_;
+    }
     void update()
     {
     }
@@ -32,4 +37,5 @@ public:
         AStar astar;
         return std::vector<Vector2i>{Vector2i(10,7), Vector2i(10,8), Vector2i(10,9)};
     }
+    World* world;
 };

@@ -5,6 +5,7 @@
 
 #include "robot.hpp"
 #include "world.hpp"
+#include "sokoban.hpp"
 
 using namespace Eigen;
 namespace plt = matplotlibcpp;
@@ -59,7 +60,6 @@ int main()
 
     Task task(Vector2i(10, 7), "box36");
     Robot robot(Vector2i(10, 7), "robot0");
-    robot.getTask(task);
 
     World world(mapWidth, mapHeight);
 
@@ -70,10 +70,16 @@ int main()
 
     world.addRobot(robot);
 
+    world.addTask(task);
+
+    Sokoban sokoban;
+    sokoban.setWorld(&world);
+
     while(true)
     {
         world.update();
         world.draw();
+        sokoban.update();
 
         char input = cv::waitKey(0);
         if(input == 27)
@@ -89,13 +95,22 @@ int main()
         else if(input == 'd')
             world.robots[0].move(Vector2i(1, 0));
         else if(input == 'p')
+        {
             world.robots[0].setAction(Robot::PUSH);
+            world.robots[0].move(Vector2i(0, 0));
+        }
         else if(input == 'l')
+        {
             world.robots[0].setAction(Robot::PULL);
+            world.robots[0].move(Vector2i(0, 0));
+        }
         else if(input == 'n')
+        {    
             world.robots[0].setAction(Robot::NOACTION);
+            world.robots[0].move(Vector2i(0, 0));
+        }
         else
-            continue;
+            world.robots[0].move(Vector2i(0, 0));
     }
 
     return 0;

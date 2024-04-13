@@ -30,6 +30,10 @@ public:
     {
         robots.push_back(robot);
     }
+    void addTask(Task task)
+    {
+        taskList.push_back(task);
+    }
 
     void draw()
     {
@@ -61,7 +65,11 @@ public:
             string mode_str = robot.action == Robot::Action::PUSH ? "push" : robot.action == Robot::Action::PULL ? "pull" : "noaction";
             putText(map_show, mode_str, Point(mode_x, mode_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
 
-            for (auto &task : robot.taskList)
+            int steps_x = robot.position.x() * show_width / width;
+            int steps_y = robot.position.y() * show_height / height + 30;
+            putText(map_show, to_string(robot.curSteps), Point(steps_x, steps_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
+
+            for (auto &task : taskList)
             {
                 int task_x = task.position.x() * show_width / width;
                 int task_y = task.position.y() * show_height / height + 10;
@@ -96,22 +104,21 @@ public:
 
     void update()
     {
-        //todo: box position update
+        //box and robot position update
         for(auto& robot : robots)
         {
-            if(robot.position.x() < 0 || robot.position.x() >= width || robot.position.y() < 0 || robot.position.y() >= height)
+            auto newRobotPose = robot.position + robot.lastMove;
+            if(newRobotPose.x() < 0 || newRobotPose.x() >= width || newRobotPose.y() < 0 || newRobotPose.y() >= height)
             {
-                cout << "Robot " << robot.name << " out of map!" << endl;
-                robot.position -= robot.lastMove;
+                cout << "Robot " << robot.name << " move out of map!" << endl;
                 break;
             }
-            auto box = find_if(boxes.begin(), boxes.end(), [&](Box box){return box.position == robot.position;});
+            auto box = find_if(boxes.begin(), boxes.end(), [&](Box box){return box.position == newRobotPose;});
             if(box != boxes.end())
             {
                 if(box->static_)
                 {
                     cout << "Robot " << robot.name << " hit a static box!" << endl;
-                    robot.position -= robot.lastMove;
                     break;
                 }
                 else
@@ -119,30 +126,77 @@ public:
                     if(robot.action == Robot::Action::NOACTION)
                     {
                         cout << "Robot " << robot.name << " hit a box without action!" << endl;
-                        robot.position -= robot.lastMove;
                         break;
                     }
                 }
             }
             
-            // if(robot.action == Robot::Action::PUSH)
-            // {
-            //     if(box != boxes.end())
-            //     {
-            //         auto boxPos = box->position + robot.lastMove;
-            //         if(boxPos.x() < 0 || boxPos.x() >= width || boxPos.y() < 0 || boxPos.y() >= height)
-            //         {
-            //             cout << "Robot " << robot.name << " push a box out of map!" << endl;
-            //             robot.position -= robot.lastMove;
-            //             break;
-            //         }
-            //     }
-            // }
-            // else if(robot.action == Robot::Action::PULL)
-            // {
-                
-            // }
+            if(robot.action == Robot::Action::PUSH)
+            {
+                if(robot.lastMove == Vector2i(0, 0))
+                {
+                    cout << "Robot " << robot.name << " start push" << endl;
+                    break;
+                }
+                else if(box != boxes.end())
+                {
+                    auto boxPos = box->position + robot.lastMove;
+                    if(boxPos.x() < 0 || boxPos.x() >= width || boxPos.y() < 0 || boxPos.y() >= height)
+                    {
+                        cout << "Robot " << robot.name << " push a box out of map!" << endl;
+                        break;
+                    }
+                    else if(find_if(boxes.begin(), boxes.end(), [&](Box box){return box.position == boxPos;}) != boxes.end())
+                    {
+                        cout << "Robot " << robot.name << " push a box to another box!" << endl;
+                        break;
+                    }
+                    else
+                    {
+                        box->position += robot.lastMove;
+                        robot.position += robot.lastMove;
+                    }
+                }
+                else
+                {
+                    cout << "Robot " << robot.name << " push without box!" << endl;
+                    break;
+                }
+            }
+            else if(robot.action == Robot::Action::PULL)
+            {
+                auto pullPos = robot.position - robot.lastMove;
+                auto pullBox = find_if(boxes.begin(), boxes.end(), [&](Box box){return box.position == pullPos;});
+                if(robot.lastMove == Vector2i(0, 0))
+                {
+                    cout << "Robot " << robot.name << " start pull" << endl;
+                    break;
+                }
+                else if(pullBox != boxes.end())
+                {
+                    if(pullBox->static_)
+                    {
+                        cout << "Robot " << robot.name << " pull a static box!" << endl;
+                        break;
+                    }
+                    else
+                    {
+                        pullBox->position += robot.lastMove;
+                        robot.position += robot.lastMove;
+                    }
+                }
+                else
+                {
+                    cout << "Robot " << robot.name << " pull without box!" << endl;
+                    break;
+                }
+            }
+            else
+            {
+                robot.position += robot.lastMove;
+            }
         }
+
     }
 
 
@@ -153,4 +207,5 @@ public:
     Mat map_push;
     vector<Box> boxes;
     vector<Robot> robots;
+    std::vector<Task> taskList;
 };
