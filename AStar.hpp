@@ -324,6 +324,10 @@ public:
             }
         }
     }
+    int getHeuristic(boxNodePtr current, Vector2i goal)
+    {
+        return robotAstar.graphSearch(current->position, goal, map);
+    }
     int graphSearch(Vector2i start, Vector2i goal, Vector2i robotStart, Mat& map)
     {
         pathList.clear();
@@ -344,6 +348,7 @@ public:
             if(cost < 0) continue;
             startPtr->g = cost;
             startPtr->h = 0;
+            //startPtr->h = getHeuristic(startPtr, goal);
             startPtr->f = startPtr->g + startPtr->h;
             startPtr->id = 1;
             startPtr->parent = nullptr;
@@ -390,6 +395,7 @@ public:
                         cout << pathPoint.move.x() << " " << pathPoint.move.y() << " " << pathPoint.action << endl;
                     }
                 }
+                cout << "iter: " << numIter << endl;
                 return cost;
             }
             openList.erase(openList.begin());
@@ -408,6 +414,7 @@ public:
                     neighborPtr->id = 1;
                     neighborPtr->g = tentative_gScore;
                     neighborPtr->h = 0;
+                    //neighborPtr->h = getHeuristic(neighborPtr, goal);
                     neighborPtr->f = neighborPtr->g + neighborPtr->h;
                     neighborPtr->parent = currentPtr;
                     neighborPtr->path = minipath[i];

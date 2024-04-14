@@ -20,7 +20,7 @@ public:
     void setWorld(World* world_)
     {
         world = world_;
-        findPath(world->robots[0].position, Vector2i(1, 1), world->boxes[36].position, world->robots[0].position);       
+        findPath(world->robots[0].position, Vector2i(1, 1), world->boxes[36].position, Vector2i(1, 1));       
     }
     void update()
     {

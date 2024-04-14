@@ -58,7 +58,7 @@ int main()
         }
     }
 
-    Task task(Vector2i(10, 7), "box36");
+    Task task(Vector2i(1, 1), "box36");
     Robot robot(Vector2i(10, 7), "robot0");
 
     World world(mapWidth, mapHeight);
