@@ -1,81 +1,184 @@
 #include <list>
 #include <algorithm>
 #include <iostream>
+#include <eigen3/Eigen/Eigen>
+#include <opencv2/opencv.hpp>
 
-class GridNode
+#include "robot.hpp"
+
+using namespace Eigen;
+using namespace cv;
+
+class robotPathPoint
 {
 public:
-    int x, y;
-    float g, h, f;
-    GridNode* parent;
-
-    GridNode(int _x, int _y, GridNode* _parent = nullptr) : x(_x), y(_y), parent(_parent), g(0), h(0), f(0) {}
+    Vector2i move;
+    Robot::Action action;
 };
 
-class AStar
+class robotNode
 {
 public:
-    std::list<GridNode*> openList;
-    std::list<GridNode*> closedList;
-
-    bool isInList(std::list<GridNode*> list, GridNode* node)
+    robotNode(Vector2i p) 
     {
-        for(auto& i : list)
-            if(i->x == node->x && i->y == node->y)
-                return true;
-        return false;
+        position = p;
+        parent = nullptr;
+        g = std::numeric_limits<int>::max();
+        h = 0;
+        f = std::numeric_limits<int>::max();
+        id = 0;
     }
+    Vector2i position;
+    robotNode* parent;
+    int g;
+    int h;
+    int f;
+    int id;
+    multimap<int, robotNode*>::iterator it;
+};
+typedef robotNode* robotNodePtr;
+class boxNode
+{   
+public:
+    Vector2i position;
+    boxNode* parent;
+    int g;
+    int h;
+    int f;
+    Robot::Action action;
+    Vector2i currRobotPos;
+};
 
-    float heuristic(GridNode* start, GridNode* goal)
+class RobotAStar
+{
+public:
+    RobotAStar() {}
+    ~RobotAStar()
     {
-        return abs(start->x - goal->x) + abs(start->y - goal->y);
+        if(gridMap != nullptr)
+        {
+            for(int i = 0; i < map.rows; i++)
+            {
+                delete[] gridMap[i];
+            }
+            delete[] gridMap;
+        }
     }
-
-    std::list<GridNode*> findPath(GridNode* start, GridNode* goal)
+    void setGridMap(Mat& map_)
     {
-        openList.push_back(start);
+        map = map_.clone();
+        if(gridMap != nullptr)
+        {
+            for(int i = 0; i < map.rows; i++)
+            {
+                delete[] gridMap[i];
+            }
+            delete[] gridMap;
+        }
+        gridMap = new robotNodePtr*[map.rows];
+        for(int i = 0; i < map.rows; i++)
+        {
+            gridMap[i] = new robotNodePtr[map.cols];
+            for(int j = 0; j < map.cols; j++)
+            {
+                gridMap[i][j] = new robotNode(Vector2i(j, i));
+            }
+        }
+    }
+    void getNeighbors(robotNodePtr current, vector<robotNodePtr>& neighbors, vector<int>& edgeCost)
+    {
+        neighbors.clear();
+        edgeCost.clear();
+        Vector2i directions[4] = {Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)};
+        for(int i = 0; i < 4; i++)
+        {
+            Vector2i next = current->position + directions[i];
+            if(next.x() < 0 || next.x() >= map.cols || next.y() < 0 || next.y() >= map.rows)
+                continue;
+            if(map.at<uint8_t>(next.y(), next.x()) == 1)
+                continue;
+            neighbors.push_back(gridMap[next.y()][next.x()]);
+            edgeCost.push_back(1);
+        }
+    }
+    int graphSearch(Vector2i start, Vector2i goal, Mat& map)
+    {
+        //map: 0 free, 1 occupied
+        setGridMap(map);
+
+        std::multimap<int, robotNode*> openList;
+        robotNodePtr startPtr = new robotNode(start);
+        robotNodePtr goalPtr = new robotNode(goal);
+        startPtr->g = 0;
+        startPtr->h = (start - goal).norm();
+        startPtr->f = startPtr->g + startPtr->h;
+        startPtr->id = 1;
+        openList.insert(std::pair<int, robotNode*>(startPtr->f, startPtr));
+
+        int tentative_gScore;
+        int numIter = 0;
+        robotNodePtr currentPtr = nullptr;
+        robotNodePtr neighborPtr = nullptr;
+
+        vector<robotNodePtr> neighbors;
+        vector<int> edgeCost;
+
         while(!openList.empty())
         {
-            GridNode* current = *std::min_element(openList.begin(), openList.end(), [](GridNode* lhs, GridNode* rhs) { return lhs->f < rhs->f; });
-            if(current->x == goal->x && current->y == goal->y)
+            numIter++;
+            currentPtr = openList.begin()->second;
+            if(currentPtr->position == goal)
             {
-                std::list<GridNode*> path;
-                while(current != nullptr)
+                while(currentPtr->parent != nullptr)
                 {
-                    path.push_front(current);
-                    current = current->parent;
+                    robotPathPoint pathPoint;
+                    pathPoint.move = currentPtr->position - currentPtr->parent->position;
+                    path.push_back(pathPoint);
+                    currentPtr = currentPtr->parent;
                 }
-                openList.clear();
-                closedList.clear();
-                return path;
+                //reverse path
+                std::reverse(path.begin(), path.end());
+                return currentPtr->g;
             }
-            openList.remove(current);
-            closedList.push_back(current);
-            for(int dx = -1; dx <= 1; dx++)
+            openList.erase(openList.begin());
+            currentPtr->id = -1;
+
+            getNeighbors(currentPtr, neighbors, edgeCost);
+
+            for(int i = 0; i < neighbors.size(); i++)
             {
-                for(int dy = -1; dy <= 1; dy++)
+                neighborPtr = neighbors[i];
+                if(neighborPtr->id == -1)
+                    continue;
+                tentative_gScore = currentPtr->g + edgeCost[i];
+                if(neighborPtr->id == 0)
                 {
-                    GridNode* neighbor = new GridNode(current->x + dx, current->y + dy, current);
-                    if(dx == 0 && dy == 0 || isInList(closedList, neighbor))
-                        continue;
-                    neighbor->g = current->g + 1;
-                    neighbor->h = heuristic(neighbor, goal);
-                    neighbor->f = neighbor->g + neighbor->h;
-                    if(isInList(openList, neighbor))
-                    {
-                        GridNode* openNode = *std::find_if(openList.begin(), openList.end(), [neighbor](GridNode* node) { return node->x == neighbor->x && node->y == neighbor->y; });
-                        if(neighbor->g < openNode->g)
-                        {
-                            openNode->g = neighbor->g;
-                            openNode->f = openNode->g + openNode->h;
-                            openNode->parent = current;
-                        }
-                    }
-                    else
-                        openList.push_back(neighbor);
+                    neighborPtr->id = 1;
+                    neighborPtr->g = tentative_gScore;
+                    neighborPtr->h = (neighborPtr->position - goal).norm();
+                    neighborPtr->f = neighborPtr->g + neighborPtr->h;
+                    neighborPtr->parent = currentPtr;
+                    neighborPtr->it = openList.insert(std::pair<int, robotNode*>(neighborPtr->f, neighborPtr));
+                }
+                else if(tentative_gScore < neighborPtr->g)
+                {
+                    neighborPtr->g = tentative_gScore;
+                    neighborPtr->f = neighborPtr->g + neighborPtr->h;
+                    neighborPtr->parent = currentPtr;
+                    openList.erase(neighborPtr->it);
+                    neighborPtr->it = openList.insert(std::pair<int, robotNode*>(neighborPtr->f, neighborPtr));
                 }
             }
         }
-        return std::list<GridNode*>();
+        return -1;
     }
+
+    vector<robotPathPoint> getPath()
+    {
+        return path;
+    }
+
+    Mat map;
+    robotNodePtr** gridMap = nullptr;
+    vector<robotPathPoint> path;
 };
