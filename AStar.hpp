@@ -40,6 +40,16 @@ typedef robotNode* robotNodePtr;
 class boxNode
 {   
 public:
+    boxNode(Vector2i p, Vector2i robotPos, Robot::Action action_ = Robot::NOACTION)
+    {
+        position = p;
+        parent = nullptr;
+        g = std::numeric_limits<int>::max();
+        h = 0;
+        f = std::numeric_limits<int>::max();
+        currRobotPos = robotPos;
+        action = action_;
+    }
     Vector2i position;
     boxNode* parent;
     int g;
@@ -47,7 +57,12 @@ public:
     int f;
     Robot::Action action;
     Vector2i currRobotPos;
+    int id = 0;
+    multimap<int, boxNode*>::iterator it;
+    vector<robotPathPoint> path;    
 };
+
+typedef boxNode* boxNodePtr;
 
 class RobotAStar
 {
@@ -103,6 +118,7 @@ public:
     }
     int graphSearch(Vector2i start, Vector2i goal, Mat& map)
     {
+        path.clear();
         //map: 0 free, 1 occupied
         setGridMap(map);
 
@@ -129,6 +145,7 @@ public:
             currentPtr = openList.begin()->second;
             if(currentPtr->position == goal)
             {
+                int cost = currentPtr->g;
                 while(currentPtr->parent != nullptr)
                 {
                     robotPathPoint pathPoint;
@@ -138,7 +155,7 @@ public:
                 }
                 //reverse path
                 std::reverse(path.begin(), path.end());
-                return currentPtr->g;
+                return cost;
             }
             openList.erase(openList.begin());
             currentPtr->id = -1;
@@ -181,4 +198,242 @@ public:
     Mat map;
     robotNodePtr** gridMap = nullptr;
     vector<robotPathPoint> path;
+};
+
+class BoxAStar
+{
+public:
+    BoxAStar() {}
+    ~BoxAStar()
+    {
+        if(gridMap != nullptr)
+        {
+            for(int i = 0; i < map.rows; i++)
+            {
+                for(int j = 0; j < map.cols; j++)
+                {
+                    delete[] gridMap[i][j];
+                }
+                delete[] gridMap[i];
+            }
+            delete[] gridMap;
+        }
+    }
+    void setGridMap(Mat& map_)
+    {
+        map = map_.clone();
+        if(gridMap != nullptr)
+        {
+            for(int i = 0; i < map.rows; i++)
+            {
+                for(int j = 0; j < map.cols; j++)
+                {
+                    delete[] gridMap[i][j];
+                }
+                delete[] gridMap[i];
+            }
+            delete[] gridMap;
+        }
+        gridMap = new boxNodePtr**[map.rows];
+        for(int i = 0; i < map.rows; i++)
+        {
+            gridMap[i] = new boxNodePtr*[map.cols];
+            for(int j = 0; j < map.cols; j++)
+            {
+                gridMap[i][j] = new boxNodePtr[4];
+                Vector2i directions[4] = {Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)};
+                for(int k = 0; k < 4; k++)
+                {
+                    Vector2i next = Vector2i(j, i) + directions[k];
+                    gridMap[i][j][k] = new boxNode(Vector2i(j, i), Vector2i(next.x(), next.y()));
+                }
+            }
+        }
+    }
+    void getNeighbors(boxNodePtr current, vector<boxNodePtr>& neighbors, vector<int>& edgeCost, vector<vector<robotPathPoint>>& minipath)
+    {
+        minipath.clear();
+        neighbors.clear();
+        edgeCost.clear();
+        boxNodePtr* elseNeighbors = gridMap[current->position.y()][current->position.x()];
+        for(int i = 0; i < 4; i++)
+        {
+            if(elseNeighbors[i]->currRobotPos == current->currRobotPos)
+            {
+                Vector2i move = current->position - current->currRobotPos;
+                Vector2i new_pos = current->position + move;
+                
+                if (current->position.x() < 0 || current->position.x() >= map.cols || current->position.y() < 0 || current->position.y() >= map.rows)
+                {
+                    continue;
+                }
+                if (new_pos.x() < 0 || new_pos.x() >= map.cols || new_pos.y() < 0 || new_pos.y() >= map.rows)
+                {
+                    continue;
+                }
+                if (map.at<uchar>(new_pos.y(), new_pos.x()) == 1)
+                {
+                    continue;
+                }
+                if (map.at<uchar>(current->currRobotPos.y(), current->currRobotPos.x()) == 1)
+                {
+                    continue;
+                }
+                gridMap[new_pos.y()][new_pos.x()][i]->action = Robot::Action::PUSH;
+                robotPathPoint point;
+                point.move = move;
+                point.action = Robot::Action::PUSH;
+                std::vector<robotPathPoint> temppath;
+                temppath.push_back(point);
+                minipath.push_back(temppath);
+                neighbors.push_back(gridMap[new_pos.y()][new_pos.x()][i]);
+                edgeCost.push_back(1);
+            }
+            else
+            {
+                if (elseNeighbors[i]->position.x() < 0 || elseNeighbors[i]->position.x() >= map.cols || elseNeighbors[i]->position.y() < 0 || elseNeighbors[i]->position.y() >= map.rows)
+                {
+                    continue;
+                }
+                if (elseNeighbors[i]->currRobotPos.x() < 0 || elseNeighbors[i]->currRobotPos.x() >= map.cols || elseNeighbors[i]->currRobotPos.y() < 0 || elseNeighbors[i]->currRobotPos.y() >= map.rows)
+                {
+                    continue;
+                }
+                if (map.at<uchar>(elseNeighbors[i]->position.y(), elseNeighbors[i]->position.x()) == 1)
+                {
+                    continue;
+                }
+                if (map.at<uchar>(elseNeighbors[i]->currRobotPos.y(), elseNeighbors[i]->currRobotPos.x()) == 1)
+                {
+                    continue;
+                }
+                //robot astar
+                Mat tempMap = map.clone();
+                tempMap.at<uchar>(elseNeighbors[i]->position.y(),elseNeighbors[i]->position.x()) = 1;
+                int cost = robotAstar.graphSearch(current->currRobotPos,elseNeighbors[i]->currRobotPos,tempMap);
+                if(cost < 0) continue;
+                elseNeighbors[i]->action = Robot::Action::NOACTION;
+                auto temppath = robotAstar.getPath();  
+                for (auto& pathPoint : temppath)
+                {
+                    pathPoint.action = Robot::Action::NOACTION;
+                }
+                minipath.push_back(temppath);
+                neighbors.push_back(elseNeighbors[i]);
+                edgeCost.push_back(cost);
+            }
+        }
+    }
+    int graphSearch(Vector2i start, Vector2i goal, Vector2i robotStart, Mat& map)
+    {
+        pathList.clear();
+        //map:0 free, 1 occupied
+        setGridMap(map);
+
+        std::multimap<int, boxNode*> openList;
+        for(int i = 0; i <4 ; i++)
+        {
+            boxNodePtr startPtr = gridMap[start.y()][start.x()][i];
+            if(startPtr->position.x() < 0 || startPtr->position.x() >= map.cols || startPtr->position.y() < 0 || startPtr->position.y() >= map.rows)
+                continue;
+            if(startPtr->currRobotPos.x() < 0 || startPtr->currRobotPos.x() >= map.cols || startPtr->currRobotPos.y() < 0 || startPtr->currRobotPos.y() >= map.rows)
+                continue;
+            Mat tempMap = map.clone();
+            tempMap.at<uchar>(startPtr->position.y(),startPtr->position.x()) = 1;
+            int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
+            if(cost < 0) continue;
+            startPtr->g = cost;
+            startPtr->h = 0;
+            startPtr->f = startPtr->g + startPtr->h;
+            startPtr->id = 1;
+            startPtr->parent = nullptr;
+            startPtr->path = robotAstar.getPath();
+            for(auto& pathPoint : startPtr->path)
+            {
+                pathPoint.action = Robot::Action::NOACTION;
+            }
+            openList.insert(std::pair<int, boxNode*>(startPtr->f, startPtr));
+        }
+        
+        int tentative_gScore;
+        int numIter = 0;
+        boxNodePtr currentPtr = nullptr;
+        boxNodePtr neighborPtr = nullptr;
+
+        vector<boxNodePtr> neighbors;
+        vector<int> edgeCost;
+        vector<vector<robotPathPoint>> minipath;
+
+        while(!openList.empty())
+        {
+            numIter++;
+            currentPtr = openList.begin()->second;
+            if(currentPtr->position == goal)
+            {
+                int cost = currentPtr->g;
+                vector<boxNodePtr> path;
+                while (currentPtr != nullptr)
+                {
+                    path.push_back(currentPtr);
+                    currentPtr = currentPtr->parent;
+                }
+                reverse(path.begin(), path.end());
+                for (auto& node : path)
+                {
+                    cout << node->position.x() << " " << node->position.y() << endl;
+                }
+                for (auto& node : path)
+                {
+                    for (auto& pathPoint : node->path)
+                    {
+                        pathList.push_back(pathPoint);
+                        cout << pathPoint.move.x() << " " << pathPoint.move.y() << " " << pathPoint.action << endl;
+                    }
+                }
+                return cost;
+            }
+            openList.erase(openList.begin());
+            currentPtr->id = -1;
+
+            getNeighbors(currentPtr, neighbors, edgeCost, minipath);
+
+            for(int i = 0; i < neighbors.size(); i++)
+            {
+                neighborPtr = neighbors[i];
+                if(neighborPtr->id == -1)
+                    continue;
+                tentative_gScore = currentPtr->g + edgeCost[i];
+                if(neighborPtr->id == 0)
+                {
+                    neighborPtr->id = 1;
+                    neighborPtr->g = tentative_gScore;
+                    neighborPtr->h = 0;
+                    neighborPtr->f = neighborPtr->g + neighborPtr->h;
+                    neighborPtr->parent = currentPtr;
+                    neighborPtr->path = minipath[i];
+                    neighborPtr->it = openList.insert(std::pair<int, boxNode*>(neighborPtr->f, neighborPtr));
+                }
+                else if(tentative_gScore < neighborPtr->g)
+                {
+                    neighborPtr->g = tentative_gScore;
+                    neighborPtr->f = neighborPtr->g + neighborPtr->h;
+                    neighborPtr->parent = currentPtr;
+                    neighborPtr->path = minipath[i];
+                    openList.erase(neighborPtr->it);
+                    neighborPtr->it = openList.insert(std::pair<int, boxNode*>(neighborPtr->f, neighborPtr));
+                }
+            }
+        }
+        return -1;
+    }
+
+    vector<robotPathPoint> getPathList()
+    {
+        return pathList;
+    }
+
+    Mat map;
+    boxNodePtr*** gridMap = nullptr;
+    vector<robotPathPoint> pathList;
+    RobotAStar robotAstar;
 };
