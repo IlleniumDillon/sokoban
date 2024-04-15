@@ -34,7 +34,7 @@ uint8_t map_[mapHeight][mapWidth] = {
     {1,0,0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,1,0,0,1},
     {1,0,0,0,0,0,1,1,0,0,1,0,0,1,1,1,1,1,0,0,1},
     {1,0,0,1,0,0,1,0,0,0,0,1,1,0,0,0,1,0,0,0,1},
-    {1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1},
+    {1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,0,0,0,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -54,11 +54,13 @@ int main()
             else if (map_[i][j] == INTERACTION) 
             {
                 boxes.push_back(Box(Vector2i(j, i), "box" + std::to_string(boxes.size()), false));
+                cout << "box" + std::to_string(boxes.size()) << endl;
             }
         }
     }
 
-    Task task(Vector2i(1, 1), "box36");
+    Task task1(Vector2i(1, 1), "box36","");
+    Task task2(Vector2i(1, 14), "box89","");
     Robot robot(Vector2i(10, 7), "robot0");
 
     World world(mapWidth, mapHeight);
@@ -70,7 +72,8 @@ int main()
 
     world.addRobot(robot);
 
-    world.addTask(task);
+    world.addTask(task1);
+    world.addTask(task2);
 
     Sokoban sokoban;
     sokoban.setWorld(&world);

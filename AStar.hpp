@@ -9,13 +9,6 @@
 using namespace Eigen;
 using namespace cv;
 
-class robotPathPoint
-{
-public:
-    Vector2i move;
-    Robot::Action action;
-};
-
 class robotNode
 {
 public:
@@ -326,7 +319,9 @@ public:
     }
     int getHeuristic(boxNodePtr current, Vector2i goal)
     {
-        return robotAstar.graphSearch(current->position, goal, map);
+        RobotAStar tempSolver;
+        int cost = tempSolver.graphSearch(current->position, goal, map);
+        return cost;
     }
     int graphSearch(Vector2i start, Vector2i goal, Vector2i robotStart, Mat& map)
     {
@@ -347,8 +342,8 @@ public:
             int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
             if(cost < 0) continue;
             startPtr->g = cost;
-            startPtr->h = 0;
-            //startPtr->h = getHeuristic(startPtr, goal);
+            //startPtr->h = 0;
+            startPtr->h = getHeuristic(startPtr, goal);
             startPtr->f = startPtr->g + startPtr->h;
             startPtr->id = 1;
             startPtr->parent = nullptr;
@@ -413,8 +408,8 @@ public:
                 {
                     neighborPtr->id = 1;
                     neighborPtr->g = tentative_gScore;
-                    neighborPtr->h = 0;
-                    //neighborPtr->h = getHeuristic(neighborPtr, goal);
+                    //neighborPtr->h = 0;
+                    neighborPtr->h = getHeuristic(neighborPtr, goal);
                     neighborPtr->f = neighborPtr->g + neighborPtr->h;
                     neighborPtr->parent = currentPtr;
                     neighborPtr->path = minipath[i];

@@ -11,6 +11,7 @@ using namespace Eigen;
 using namespace cv;
 using namespace std;
 
+class robotPathPoint;
 class Robot
 {
 public:
@@ -40,7 +41,14 @@ public:
     Vector2i lastMove;
     std::string name;
     Vector2i goal;
-    std::vector<Vector2i> path;
+    std::vector<robotPathPoint> path;
     Action action = NOACTION;
     int curSteps = 0;
+};
+
+class robotPathPoint
+{
+public:
+    Vector2i move;
+    Robot::Action action;
 };

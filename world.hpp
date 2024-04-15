@@ -73,20 +73,13 @@ public:
             {
                 int task_x = task.position.x() * show_width / width;
                 int task_y = task.position.y() * show_height / height + 10;
-                putText(map_show, task.name, Point(task_x, task_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+                putText(map_show, task.boxName, Point(task_x, task_y), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
 
                 int task_lu_x = task.position.x() * show_width / width;
                 int task_lu_y = task.position.y() * show_height / height;
                 int task_rd_x = (task.position.x() + 1) * show_width / width;
                 int task_rd_y = (task.position.y() + 1) * show_height / height;
                 rectangle(map_show, Point(task_lu_x, task_lu_y), Point(task_rd_x, task_rd_y), Scalar(0, 255, 255), 5);
-            }
-
-            for(auto& path : robot.path)
-            {
-                int path_x = (path.x() + 0.5) * show_width / width;
-                int path_y = (path.y() + 0.5) * show_height / height;
-                circle(map_show, Point(path_x, path_y), 5, Scalar(0, 0, 255), -1);
             }
         }
 

@@ -13,11 +13,13 @@ class Task
 {
 public:
     Task(){};
-    Task(Vector2i _position, string _name) 
+    Task(Vector2i _position, string box_name, string robot_name) 
     {
         position = _position;
-        name = _name;
+        boxName = box_name;
+        robotName = robot_name;
     }
-    std::string name;
+    std::string boxName;
+    std::string robotName;
     Vector2i position;
 };

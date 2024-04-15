@@ -24,10 +24,10 @@ public:
     }
     void update()
     {
-        if(index < path.size())
+        if(index < world->robots[0].path.size())
         {
-            world->robots[0].setAction(path[index].action);
-            world->robots[0].move(path[index].move);
+            world->robots[0].setAction(world->robots[0].path[index].action);
+            world->robots[0].move(world->robots[0].path[index].move);
             index++;
         }
         else
@@ -36,9 +36,12 @@ public:
             world->robots[0].move(Vector2i(0, 0));
         }
     }
-    std::vector<Task> fixTaskList(std::vector<Task> taskList)
+    void fixTaskList()
     {
-        return taskList;
+        for (auto& task : world->taskList)
+        {
+            task.robotName = "robot0";
+        }
     }
     void generateMap(Mat& map, vector<string> ignore)
     {
@@ -73,12 +76,12 @@ public:
         generateMap(map, ignore);
         int cost = boxAStar.graphSearch(box_start,box_end, robot_start, map);
         std::cout << "Cost: " << cost << std::endl;
-        path = boxAStar.getPathList();
+        world->robots[0].path = boxAStar.getPathList();
     }
 
     World* world;
     RobotAStar robotAStar;
     BoxAStar boxAStar;
-    vector<robotPathPoint> path;
+    //vector<robotPathPoint> path;
     int index = 0;
 };
