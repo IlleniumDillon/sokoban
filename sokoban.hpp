@@ -13,6 +13,23 @@ using namespace Eigen;
 using namespace cv;
 using namespace std;
 
+class WorldNode
+{
+public:
+    vector<Vector2i> position;
+    Vector2i robotPosition;
+
+    WorldNode* parent;
+    int g;
+    int h;
+    int f;
+    int id;
+    multimap<int, WorldNode*>::iterator it;
+    
+    vector<robotPathPoint> path;
+};
+
+typedef WorldNode* WorldNodePtr;
 class Sokoban
 {
 public:
@@ -72,16 +89,39 @@ public:
     void findPath(Vector2i robot_start, Vector2i robot_end, Vector2i box_start, Vector2i box_end)
     {
         std::vector<string> ignore{"robot0","box36"};
-        Mat map;
         generateMap(map, ignore);
         int cost = boxAStar.graphSearch(box_start,box_end, robot_start, map);
         std::cout << "Cost: " << cost << std::endl;
         world->robots[0].path = boxAStar.getPathList();
     }
+    int graphSearch(vector<Task>& startAndGoal, Robot& robot)
+    {
+        pathList.clear();
+        vector<Vector2i> boxStarts;
+        vector<Vector2i> boxGoals;
+        for (auto& task : startAndGoal)
+        {
+            auto box = find_if(world->boxes.begin(), world->boxes.end(), [&](Box& box) { return box.name == task.boxName; });
+            boxStarts.push_back(box->position);
+            boxGoals.push_back(task.position);
+        }
+        std::multimap<int, WorldNode> openList;
+
+        WorldNode startNode;
+        startNode.position = boxStarts;
+        startNode.robotPosition = robot.position;
+        startNode.g = 0;
+        startNode.h = 0;
+        startNode.f = 0;
+        startNode.parent = nullptr;
+        startNode.id = 1;
+        startNode.path = pathList; 
+    }
 
     World* world;
     RobotAStar robotAStar;
     BoxAStar boxAStar;
-    //vector<robotPathPoint> path;
+    Mat map;
+    vector<robotPathPoint> pathList;
     int index = 0;
 };
