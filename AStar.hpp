@@ -397,6 +397,7 @@ public:
             currentPtr->id = -1;
 
             getNeighbors(currentPtr, neighbors, edgeCost, minipath);
+            cout << "neighbors: " << neighbors.size() << endl;
 
             for(int i = 0; i < neighbors.size(); i++)
             {

@@ -55,12 +55,13 @@ int main()
             {
                 boxes.push_back(Box(Vector2i(j, i), "box" + std::to_string(boxes.size()), false));
                 cout << "box" + std::to_string(boxes.size()) << endl;
+                cout << "position: " << j << " " << i << endl;
             }
         }
     }
 
-    Task task1(Vector2i(1, 1), "box36","");
-    Task task2(Vector2i(1, 14), "box89","");
+    Task task1(Vector2i(17, 3), "box36","");
+    Task task2(Vector2i(14, 12), "box89","");
     Robot robot(Vector2i(10, 7), "robot0");
 
     World world(mapWidth, mapHeight);
