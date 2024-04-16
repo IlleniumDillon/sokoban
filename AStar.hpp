@@ -339,38 +339,35 @@ public:
         //map:0 free, 1 occupied
         setGridMap(map);
 
-        RobotAStar tempAStar;
-        int cost = tempAStar.graphSearch(start, goal, map);
-        if(cost < 0) return -1;
-        auto boxNativePath = tempAStar.getPath();
-        boxNativePathPos = tempAStar.pathPos;
-        auto firstMove = boxNativePath[0].move;
-        auto firstRobotPos = start - firstMove;
+        // RobotAStar tempAStar;
+        // int cost = tempAStar.graphSearch(start, goal, map);
+        // if(cost < 0) return -1;
+        // auto boxNativePath = tempAStar.getPath();
+        // boxNativePathPos = tempAStar.pathPos;
+        // auto firstMove = boxNativePath[0].move;
+        // auto firstRobotPos = start - firstMove;
 
         std::multimap<int, boxNode*> openList;
 
         boxNodePtr* startStates = gridMap[start.y()][start.x()];
         for (int i = 0; i < 4 ; i++)
         {
-            if(startStates[i]->currRobotPos == firstRobotPos)
+            boxNodePtr startPtr = startStates[i];
+            Mat tempMap = map.clone();
+            tempMap.at<uchar>(startPtr->position.y(),startPtr->position.x()) = 1;
+            int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
+            if(cost < 0) continue;
+            startStates[i]->g = cost;
+            startStates[i]->h = getHeuristic(startStates[i], goal);
+            startStates[i]->f = startStates[i]->g + startStates[i]->h;
+            startStates[i]->id = 1;
+            startStates[i]->parent = nullptr;
+            startStates[i]->path = robotAstar.getPath();
+            for (auto& pathPoint : startStates[i]->path)
             {
-                boxNodePtr startPtr = startStates[i];
-                Mat tempMap = map.clone();
-                tempMap.at<uchar>(startPtr->position.y(),startPtr->position.x()) = 1;
-                int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
-                if(cost < 0) continue;
-                startStates[i]->g = cost;
-                startStates[i]->h = getHeuristic(startStates[i], goal);
-                startStates[i]->f = startStates[i]->g + startStates[i]->h;
-                startStates[i]->id = 1;
-                startStates[i]->parent = nullptr;
-                startStates[i]->path = robotAstar.getPath();
-                for (auto& pathPoint : startStates[i]->path)
-                {
-                    pathPoint.action = Robot::Action::NOACTION;
-                }
-                openList.insert(std::pair<int, boxNode*>(startPtr->f, startPtr));
+                pathPoint.action = Robot::Action::NOACTION;
             }
+            openList.insert(std::pair<int, boxNode*>(startPtr->f, startPtr));
         }
         
         int tentative_gScore;
@@ -396,26 +393,26 @@ public:
                     currentPtr = currentPtr->parent;
                 }
                 reverse(path.begin(), path.end());
-                for (auto& node : path)
-                {
-                    cout << node->position.x() << " " << node->position.y() << endl;
-                }
+                // for (auto& node : path)
+                // {
+                //     cout << node->position.x() << " " << node->position.y() << endl;
+                // }
                 for (auto& node : path)
                 {
                     for (auto& pathPoint : node->path)
                     {
                         pathList.push_back(pathPoint);
-                        cout << pathPoint.move.x() << " " << pathPoint.move.y() << " " << pathPoint.action << endl;
+                        //cout << pathPoint.move.x() << " " << pathPoint.move.y() << " " << pathPoint.action << endl;
                     }
                 }
-                cout << "iter: " << numIter << endl;
+                // cout << "iter: " << numIter << endl;
                 return cost;
             }
             openList.erase(openList.begin());
             currentPtr->id = -1;
 
             getNeighbors(currentPtr, neighbors, edgeCost, minipath);
-            cout << "neighbors: " << neighbors.size() << endl;
+            // cout << "neighbors: " << neighbors.size() << endl;
 
             for(int i = 0; i < neighbors.size(); i++)
             {
