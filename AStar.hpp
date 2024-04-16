@@ -112,6 +112,7 @@ public:
     int graphSearch(Vector2i start, Vector2i goal, Mat& map)
     {
         path.clear();
+        pathPos.clear();
         //map: 0 free, 1 occupied
         setGridMap(map);
 
@@ -144,10 +145,13 @@ public:
                     robotPathPoint pathPoint;
                     pathPoint.move = currentPtr->position - currentPtr->parent->position;
                     path.push_back(pathPoint);
+                    pathPos.push_back(currentPtr->position);
                     currentPtr = currentPtr->parent;
                 }
                 //reverse path
                 std::reverse(path.begin(), path.end());
+                pathPos.push_back(start);
+                std::reverse(pathPos.begin(), pathPos.end());
                 return cost;
             }
             openList.erase(openList.begin());
@@ -191,6 +195,7 @@ public:
     Mat map;
     robotNodePtr** gridMap = nullptr;
     vector<robotPathPoint> path;
+    vector<Vector2i> pathPos;
 };
 
 class BoxAStar
@@ -248,6 +253,7 @@ public:
         minipath.clear();
         neighbors.clear();
         edgeCost.clear();
+
         boxNodePtr* elseNeighbors = gridMap[current->position.y()][current->position.x()];
         for(int i = 0; i < 4; i++)
         {
@@ -300,6 +306,10 @@ public:
                 {
                     continue;
                 }
+                if (abs(elseNeighbors[i]->currRobotPos.x() - current->currRobotPos.x()) == 2 || abs(elseNeighbors[i]->currRobotPos.y() - current->currRobotPos.y()) == 2)
+                {
+                    continue;
+                }
                 //robot astar
                 Mat tempMap = map.clone();
                 tempMap.at<uchar>(elseNeighbors[i]->position.y(),elseNeighbors[i]->position.x()) = 1;
@@ -329,30 +339,38 @@ public:
         //map:0 free, 1 occupied
         setGridMap(map);
 
+        RobotAStar tempAStar;
+        int cost = tempAStar.graphSearch(start, goal, map);
+        if(cost < 0) return -1;
+        auto boxNativePath = tempAStar.getPath();
+        boxNativePathPos = tempAStar.pathPos;
+        auto firstMove = boxNativePath[0].move;
+        auto firstRobotPos = start - firstMove;
+
         std::multimap<int, boxNode*> openList;
-        for(int i = 0; i <4 ; i++)
+
+        boxNodePtr* startStates = gridMap[start.y()][start.x()];
+        for (int i = 0; i < 4 ; i++)
         {
-            boxNodePtr startPtr = gridMap[start.y()][start.x()][i];
-            if(startPtr->position.x() < 0 || startPtr->position.x() >= map.cols || startPtr->position.y() < 0 || startPtr->position.y() >= map.rows)
-                continue;
-            if(startPtr->currRobotPos.x() < 0 || startPtr->currRobotPos.x() >= map.cols || startPtr->currRobotPos.y() < 0 || startPtr->currRobotPos.y() >= map.rows)
-                continue;
-            Mat tempMap = map.clone();
-            tempMap.at<uchar>(startPtr->position.y(),startPtr->position.x()) = 1;
-            int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
-            if(cost < 0) continue;
-            startPtr->g = cost;
-            //startPtr->h = 0;
-            startPtr->h = getHeuristic(startPtr, goal);
-            startPtr->f = startPtr->g + startPtr->h;
-            startPtr->id = 1;
-            startPtr->parent = nullptr;
-            startPtr->path = robotAstar.getPath();
-            for(auto& pathPoint : startPtr->path)
+            if(startStates[i]->currRobotPos == firstRobotPos)
             {
-                pathPoint.action = Robot::Action::NOACTION;
+                boxNodePtr startPtr = startStates[i];
+                Mat tempMap = map.clone();
+                tempMap.at<uchar>(startPtr->position.y(),startPtr->position.x()) = 1;
+                int cost = robotAstar.graphSearch(robotStart,startPtr->currRobotPos,tempMap);
+                if(cost < 0) continue;
+                startStates[i]->g = cost;
+                startStates[i]->h = getHeuristic(startStates[i], goal);
+                startStates[i]->f = startStates[i]->g + startStates[i]->h;
+                startStates[i]->id = 1;
+                startStates[i]->parent = nullptr;
+                startStates[i]->path = robotAstar.getPath();
+                for (auto& pathPoint : startStates[i]->path)
+                {
+                    pathPoint.action = Robot::Action::NOACTION;
+                }
+                openList.insert(std::pair<int, boxNode*>(startPtr->f, startPtr));
             }
-            openList.insert(std::pair<int, boxNode*>(startPtr->f, startPtr));
         }
         
         int tentative_gScore;
@@ -439,4 +457,5 @@ public:
     boxNodePtr*** gridMap = nullptr;
     vector<robotPathPoint> pathList;
     RobotAStar robotAstar;
+    vector<Vector2i> boxNativePathPos;
 };

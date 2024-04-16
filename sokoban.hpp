@@ -51,12 +51,12 @@ public:
     void setWorld(World* world_)
     {
         world = world_;
-        //findPath(world->robots[0].position, Vector2i(1, 1), world->boxes[36].position, Vector2i(1, 1));
-        std::vector<string> ignore{"robot0","box36", "box89"};
-        //std::vector<string> ignore{"robot0","box36"};
-        generateMap(map, ignore);
-        int cost = graphSearch(world->taskList, world->robots[0]);  
-        cout << "Cost: " << cost << endl;
+        findPath(world->robots[0].position, Vector2i(1, 1), world->boxes[36].position, Vector2i(1, 1));
+        // std::vector<string> ignore{"robot0","box36", "box89"};
+        // //std::vector<string> ignore{"robot0","box36"};
+        // generateMap(map, ignore);
+        // int cost = graphSearch(world->taskList, world->robots[0]);  
+        // cout << "Cost: " << cost << endl;
     }
     void update()
     {

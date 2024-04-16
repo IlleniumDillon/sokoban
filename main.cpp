@@ -60,7 +60,7 @@ int main()
         }
     }
 
-    Task task1(Vector2i(17, 3), "box36","");
+    Task task1(Vector2i(1, 1), "box36","");
     Task task2(Vector2i(14, 12), "box89","");
     Robot robot(Vector2i(10, 7), "robot0");
 
@@ -74,7 +74,7 @@ int main()
     world.addRobot(robot);
 
     world.addTask(task1);
-    world.addTask(task2);
+    //world.addTask(task2);
 
     Sokoban sokoban;
     sokoban.setWorld(&world);
